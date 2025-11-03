@@ -1,0 +1,81 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+.env
+.env.*
+
+# Editors/IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and runs
+log/
+logs/
+wandb/
+outputs/
+runs/
+
+# Data and artifacts
+data/
+datasets/
+checkpoints/
+models/
+lora_adapters/
+
+# Build / dist
+build/
+dist/
+
+# C/C++/CUDA build
+*.o
+*.so
+*.dll
+*.dylib
+*.a
+*.lib
+
+# Python packaging
+*.egg-info/
+*.egg
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
+
+# Archives and large binaries
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.bz2
+*.xz
+*.npz
+*.npy
+*.onnx
+*.ckpt
+*.pth
+*.pt
+
+# Misc
+.pytest_cache/
+coverage/
+.mypy_cache/
+pip-wheel-metadata/
+
+# Local configs
+config/local*
+.cache/
+*.swp
+*.swo
+
+# Third-party large data (keep code only)
+third_party/

@@ -1,0 +1,25 @@
+name: pi0_server_with_affordance
+seed: 42
+model_cfg: !include ../../models/hf_pi0.json
+
+# 强制禁用多GPU模式
+multi_gpu: false
+n_nodes: 1
+
+eval_cfg:
+  simulator_name: "simpler"
+  env_adapter: "BridgeSimplerAdapter"
+  pretrained_model_path: ./models/INTACT-pi0-finetune-bridge
+  role: "server"
+  host: "0.0.0.0"
+  port: 5002
+
+  # Affordance配置
+  use_affordance: true
+  affordance_color: [0, 255, 0]
+  affordance_thickness: 3
+  affordance_length: 0.08
+  affordance_show_point: true
+
+env:
+  dataset_statistics_path: ./config/dataset/bridge_statistics.json
