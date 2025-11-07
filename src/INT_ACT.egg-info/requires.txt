@@ -1,0 +1,15 @@
+lerobot
+transformers==4.48.3
+opencv-python>=4.11.0
+pytest
+policy-server-client
+numpy==1.26.4
+torch==2.6.0
+bitsandbytes
+einops
+draccus
+protobuf==3.20.3
+tensorflow==2.15.0
+tensorflow_datasets==4.9.2
+tensorflow_graphics
+evaluate
