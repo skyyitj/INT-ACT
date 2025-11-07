@@ -25,10 +25,8 @@ outputs/
 runs/
 
 # Data and artifacts
-data/
 datasets/
 checkpoints/
-models/
 lora_adapters/
 
 # Build / dist
