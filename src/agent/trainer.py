@@ -91,8 +91,6 @@ class BaseTrainer:
                         filename=None, # log to file. If None then to stdout
                         debug=self.debug) # If debug=True, DEBUG level and up will show, else INFO
         if self.multi_gpu:
-            print('---- self.local_rank, self.global_rank: ', self.local_rank, self.global_rank)
-            print('device_count:', torch.cuda.device_count())
             self.log.info(f"GPU local ID: {self.gpu_id}. Global rank: {self.global_rank}. Local rank: {self.local_rank}. \
                 Local world size: {self.local_world_size}. World size: {self.world_size}. Group rank: {self.group_rank}"
         )
@@ -115,36 +113,26 @@ class BaseTrainer:
         self.multi_gpu_mechanism = train_cfg.mechanism
 
         # Model initialization
-        print(f'[RANK {self.global_rank if self.multi_gpu else 0}] Starting model initialization...', flush=True)
-        print('1-1')
         self._initialize_model(train_cfg, model_class)
-        print('1-2')
-        print(f'[RANK {self.global_rank if self.multi_gpu else 0}] Model initialization completed', flush=True)
-        print('1-3')
         if self.multi_gpu:
-            print(f'[RANK {self.global_rank}] After model initialization...', flush=True)
             # 确保所有CUDA操作完成
             torch.cuda.synchronize()
-            print(f'[RANK {self.global_rank}] CUDA synchronized', flush=True)
             
-            # 打印GPU内存状态
-            if torch.cuda.is_available():
-                allocated = torch.cuda.memory_allocated(self.local_rank) / 1024**3
-                reserved = torch.cuda.memory_reserved(self.local_rank) / 1024**3
-                print(f'[RANK {self.global_rank}] GPU {self.local_rank} Memory: {allocated:.2f}GB allocated, {reserved:.2f}GB reserved', flush=True)
+            # # 打印GPU内存状态
+            # if torch.cuda.is_available():
+            #     allocated = torch.cuda.memory_allocated(self.local_rank) / 1024**3
+            #     reserved = torch.cuda.memory_reserved(self.local_rank) / 1024**3
+            #     print(f'[RANK {self.global_rank}] GPU {self.local_rank} Memory: {allocated:.2f}GB allocated, {reserved:.2f}GB reserved', flush=True)
             
 
             try:
-                print(f'[RANK {self.global_rank}] Calling barrier...', flush=True)
                 dist.barrier(device_ids=[self.local_rank])
-                print(f'-----> 1-4: [RANK {self.global_rank}] Barrier passed after model initialization', flush=True)
             except Exception as e:
-                print(f'----->1-5: [RANK {self.global_rank}] Barrier failed after model init: {e}', flush=True)
                 raise
-            print(f'[RANK {self.global_rank}] Skipping barrier for now (testing)', flush=True)
-        print('1-4')
-        print('3-1', flush=True)
         #
+        # Track if any parameters are frozen (requires_grad=False)
+        # This is needed to set find_unused_parameters correctly for DDP
+        has_frozen_params = False
         if self.model_class.name == "pi0":
             self.model.model.paligemma_with_expert.gemma_expert.lm_head = None # remove action expert lm head
             if train_cfg.freeze_lm_head:
@@ -155,12 +143,13 @@ class BaseTrainer:
                 # freeze paligemma's token embeddings
                 for param in self.model.model.paligemma_with_expert.paligemma.language_model.model.embed_tokens.parameters():
                     param.requires_grad = False
+                    has_frozen_params = True
             if train_cfg.freeze_vlm:
                 # freeze VLM
                 self.log.info("Freezing VLM")
                 for param in self.model.model.paligemma_with_expert.paligemma.language_model.model.parameters():
                     param.requires_grad = False
-        print('3-2')
+                    has_frozen_params = True
         if self.multi_gpu and self.multi_gpu_mechanism == "fsdp":
             from torch.distributed.fsdp import MixedPrecision
             fsdp_mp_config = MixedPrecision(
@@ -181,43 +170,39 @@ class BaseTrainer:
                                        mode="default")
 
         self.log.info(f"Using cuda device: {self.device}, dtype: {self.dtype}")
-        print(f'3-3 [RANK {self.global_rank if self.multi_gpu else 0}] Model moved to device', flush=True)
         if self.multi_gpu:
             # Sync all processes before DDP initialization
-            print(f'[RANK {self.global_rank}] Waiting at barrier before DDP initialization...', flush=True)
             try:
                 dist.barrier(device_ids=[self.local_rank])
-                print(f'[RANK {self.global_rank}] Barrier passed, proceeding to DDP initialization', flush=True)
             except Exception as e:
-                print(f'[RANK {self.global_rank}] Barrier failed: {e}', flush=True)
                 raise
             
             # Verify model structure is identical across ranks before wrapping with DDP/FSDP
             # 注意：如果遇到超时问题，可以临时注释掉这个验证
             # 临时禁用验证以避免 NCCL 超时问题
             self.log.info(f"[RANK {self.global_rank}] Skipping model structure verification to avoid NCCL timeout.")
-            print(f'3-4 [RANK {self.global_rank}]', flush=True)
             if self.multi_gpu_mechanism == "ddp":
                 # import torch.distributed as dist
                 # from torch.nn.parallel import DistributedDataParallel as DDP
                 self.log.info(f"Using {self.local_world_size} GPUs in each of the {train_cfg.n_nodes} nodes")
-                print(f'3-5 [RANK {self.global_rank}] self.local_rank: {self.local_rank}', flush=True)
-                print(f'[RANK {self.global_rank}] Starting DDP initialization...', flush=True)
+                # find_unused_parameters 说明：
+                # - False: DDP 假设所有参数都参与前向传播并产生梯度（性能更好）
+                # - True: DDP 会检测哪些参数未参与前向传播，跳过这些参数的梯度同步
+                # 当有参数被冻结（requires_grad=False）时，这些参数不会产生梯度，
+                # 必须设置 find_unused_parameters=True，否则 DDP 会报错
+                find_unused = has_frozen_params or (not train_cfg.freeze_lm_head)
+                self.log.info(f"Setting find_unused_parameters={find_unused} (has_frozen_params={has_frozen_params}, freeze_lm_head={train_cfg.freeze_lm_head})")
                 self.model = DDP(
                     self.model,
                     device_ids=[self.local_rank],
                     gradient_as_bucket_view=True,
                     static_graph=False,
-                    find_unused_parameters=False if train_cfg.freeze_lm_head else True,
+                    find_unused_parameters=find_unused,
                 )
-                print(f'[RANK {self.global_rank}] DDP initialization completed', flush=True)
-                print('1-1')
                 try:
                     dist.barrier(device_ids=[self.local_rank])
                 except TypeError:
-                    print('1-3')
                     dist.barrier()
-                print('1-2')
             elif self.multi_gpu_mechanism == "fsdp":
 
                 self.model = FSDP(self.model,
@@ -230,9 +215,7 @@ class BaseTrainer:
                     dist.barrier()
             else:
                 raise NotImplementedError("Please specify a supported parallel mechanism.")
-        print('2-1')
         log_allocated_gpu_memory(log=self.log, stage="loading model", device=self.gpu_id)
-        print('2-2')
         self.action_horizon = self.model_cfg.chunk_size
 
         # Determine gradient accumulation and batch sizes
@@ -247,7 +230,6 @@ class BaseTrainer:
             batch_size=train_cfg.per_device_batch_size,
             pin_memory=True,
         )
-        print('2-3')
         self.val_dataiterator = iter(
             DataLoader(
                 TorchRLDSInterleavedDataset(train_cfg.data.val, train=False).dataset,
@@ -291,8 +273,10 @@ class BaseTrainer:
         if self.model_class.name == "pi0":
             vlm_parameters = base_model.model.paligemma_with_expert.paligemma.parameters()
             action_expert_parameters = base_model.model.paligemma_with_expert.gemma_expert.parameters()
-            self.vlm_param_count = sum(p.numel() for p in vlm_parameters)
-            self.action_expert_param_count = sum(p.numel() for p in action_expert_parameters)
+            # self.vlm_param_count = sum(p.numel() for p in vlm_parameters)
+            self.vlm_param_count = sum(p.numel() if p.requires_grad else 0 for p in vlm_parameters)
+            # self.action_expert_param_count = sum(p.numel() for p in action_expert_parameters)
+            self.action_expert_param_count = sum(p.numel() if p.requires_grad else 0 for p in action_expert_parameters)
             self.log.info(f"Number of trained parameters (VLM): {self.vlm_param_count/1e9:.3f}B")
             self.log.info(f"Number of trained parameters (action expert): {self.action_expert_param_count/1e9:.3f}B")
         elif self.model_class.name == "fusiona":
@@ -331,6 +315,8 @@ class BaseTrainer:
 
         # wandb setup
         if train_cfg.use_wandb and self.main_rank:
+            # Login to wandb if API key is provided
+            wandb.login(key="f2d06e743020209726d0f62f1b57930bb0c02049")
             wandb.init(
                 project=train_cfg.wandb.project,
                 name=time.strftime("%Y%m%d-%H%M%S") + "_" + self.name,
@@ -338,6 +324,7 @@ class BaseTrainer:
                 entity=train_cfg.wandb.entity,
                 id=self.wandb_runid,
                 resume="allow",
+                mode="offline",
             )
 
     def _get_param_signature(self, model: torch.nn.Module):
@@ -386,6 +373,7 @@ class BaseTrainer:
         while True:
             for batch in self.train_dataloader:
 
+
                 inputs = self.preprocess_batch(batch=batch)
 
                 # Gradient accumulation check
@@ -416,7 +404,6 @@ class BaseTrainer:
 
                     self.optimizer.zero_grad(set_to_none=True)
                     self.cnt_update += 1
-
                     # save model and auxiliary data at the end of a update
                     if self.cnt_update % self.save_model_freq == 0 or self.cnt_update == self.n_updates:
                         self._save_training() # takes care of main rank in the function
@@ -687,29 +674,19 @@ class BaseTrainer:
         # Model initialization
         try:
             rank_info = f"[RANK {self.global_rank if self.multi_gpu else 0}]"
-            print(f"{rank_info} Starting model class instantiation...", flush=True)
-            
             if train_cfg.load_from_checkpoint is None:
                 self.model = model_class(config=self.model_cfg, dataset_stats=train_cfg.data.dataset_stats)
-                print(f"{rank_info} Model instantiated from scratch", flush=True)
             else:
-                print(f"{rank_info} Loading checkpoint from {train_cfg.load_from_checkpoint}...", flush=True)
                 self.model = self._load_model(model_class=model_class, checkpoint_dir=train_cfg.load_from_checkpoint)
                 self.log.info(f"Loaded checkpoint from {train_cfg.load_from_checkpoint}.")
-                print(f"{rank_info} Checkpoint loaded successfully", flush=True)
             
             # 移动模型到GPU（如果还没有的话）
             if self.multi_gpu:
-                print(f"{rank_info} Moving model to GPU {self.gpu_id}...", flush=True)
                 torch.cuda.synchronize()
-                print(f"{rank_info} Model ready on GPU {self.gpu_id}", flush=True)
                 
         except Exception as e:
             # CRITICAL: Print error even from non-main ranks
             import traceback
-            print(f"[RANK {self.global_rank if self.multi_gpu else 0}] Model initialization failed!", flush=True)
-            print(f"[RANK {self.global_rank if self.multi_gpu else 0}] Error: {str(e)}", flush=True)
-            print(f"[RANK {self.global_rank if self.multi_gpu else 0}] Traceback:", flush=True)
             traceback.print_exc()
             raise
 
@@ -726,6 +703,7 @@ class BaseTrainer:
             if self.main_rank:
                 model_save_path = self.checkpoint_dir / f"step_{self.cnt_update}"
                 data_save_path = model_save_path / "auxiliary_data.pt"
+                print('save model under path:', model_save_path)
 
                 # In HF, model_save_path is a path to a folder, which contains a .safetensors file
                 if self.multi_gpu and self.multi_gpu_mechanism == "ddp":

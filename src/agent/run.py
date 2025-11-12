@@ -20,7 +20,7 @@ from src.utils.pipeline import get_class_from_path
 @draccus.wrap()
 def main(pipeline_cfg: TrainPipelineConfig):
     model_type = pipeline_cfg.model_cfg.type
-
+    pipeline_cfg.model_cfg.paligemma_pretrained_path = os.environ.get("PALIGEMMA_PRETRAINED_PATH", pipeline_cfg.model_cfg.paligemma_pretrained_path)
     model_map = {
         "pi0": PI0Policy,
         }
@@ -64,6 +64,7 @@ def main(pipeline_cfg: TrainPipelineConfig):
         elif pipeline_cfg.eval_cfg.role == "client":
             evaluator_class = get_class_from_path(pipeline_cfg.eval_cfg.simulator_path)
             evaluator = evaluator_class(pipeline_cfg=pipeline_cfg)
+            print('evaluator.evaluate()', evaluator)
             evaluator.evaluate()
 if __name__ == "__main__":
     main()

@@ -171,6 +171,8 @@ class BridgeSimplerAdapter(SimplerAdapter):
             if isinstance(obs["agent"], dict) and "eef_pos" in obs["agent"]:
                 proprio = obs["agent"]["eef_pos"]
             else:
+                # print(f"----- obs['agent']: {obs['agent'].keys()} ---------")
+                # exit(0)
                 # agent 不是字典或没有 eef_pos
                 print(f"⚠️  obs['agent'] 结构异常: {type(obs['agent'])}, 键: {list(obs['agent'].keys()) if isinstance(obs['agent'], dict) else 'N/A'}")
                 raise KeyError(f"obs['agent'] 中找不到 'eef_pos'，可用键: {list(obs['agent'].keys()) if isinstance(obs['agent'], dict) else 'N/A'}")

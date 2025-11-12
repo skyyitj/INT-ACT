@@ -51,7 +51,7 @@
     "freeze_vision_encoder": false,
     "train_expert_only": false,
     "train_state_proj": true,
-    "paligemma_pretrained_path": "/data1/open-pi-zero/transformer_cache/paligemma-3b-pt-224",
+    "paligemma_pretrained_path": null,
     "optimizer_lr": 5e-5,
     "optimizer_betas": [
         0.9,

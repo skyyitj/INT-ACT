@@ -79,3 +79,5 @@ config/local*
 
 # Third-party large data (keep code only)
 third_party/
+
+__MACOSX/

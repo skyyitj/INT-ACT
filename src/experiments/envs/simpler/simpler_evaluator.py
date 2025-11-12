@@ -121,6 +121,9 @@ class SimplerEvaluator(BaseEvaluator):
         if recording:
             os.environ["TOKENIZERS_PARALLELISM"] = "false"
             video_default_path = video_dir / f"video_{cnt_episode}.mp4"
+            print('======================================')
+            print('write video into', video_default_path)
+            print('======================================')
             video_writer = imageio.get_writer(video_default_path)
 
         task_logger.info(
@@ -129,6 +132,7 @@ class SimplerEvaluator(BaseEvaluator):
 
         # Set up receding horizon control
         action_plan = collections.deque()
+
         while True:
 
             img = np.ascontiguousarray(get_image_from_maniskill2_obs_dict(env, obs))
@@ -149,6 +153,8 @@ class SimplerEvaluator(BaseEvaluator):
             obs, reward, success, truncated, info = env.step(action.copy()) # somehow simpler needs a writable np array
 
             # Record video frame if enabled
+            # print(f"recording: {recording} ----- writing video frame into {video_default_path} ---------")
+
             if recording:
                 video_writer.append_data(img)
 
@@ -179,6 +185,7 @@ class SimplerEvaluator(BaseEvaluator):
                 episode_stats = info.get('episode_stats', {})
                 task_logger.info(f"Episode {cnt_episode} stats: {episode_stats}")
                 # Exit if we've completed enough episodes
+                print(f"progress: {cnt_episode} / {self.n_eval_episode} ---------")
                 if cnt_episode >= self.n_eval_episode:
                     break
 

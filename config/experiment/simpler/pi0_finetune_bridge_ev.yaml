@@ -1,6 +1,7 @@
 name: pi0_finetune
 seed: 42
-model_cfg: !include ../../models/pi0_finetune_bridge.json
+# model_cfg: !include ../../models/pi0_finetune_bridge.json
+model_cfg: !include ../../models/pi0_baseline_bridge.json
 
 eval_cfg:
   simulator_name: "simpler"
@@ -64,11 +65,15 @@ eval_cfg:
     # "widowx_carrot_on_plate_lang_color",
   ]
 
-  n_eval_episode: 24
-  n_video: 24
+  # n_eval_episode: 24
+  # n_video: 24
+  n_eval_episode: 3
+  n_video: 3
   recording: True
-  pretrained_model_path: ./models/INTACT-pi0-finetune-bridge
-  pretrained_model_gradient_step_cnt: [7565]
+  # pretrained_model_path: ./models/INTACT-pi0-finetune-bridge
+  pretrained_model_path: /media/jushen/linda-zhao/data1/open-pi-zero/log/train/pi0_baseline_bridge_freeze_vlm/2025-11-10_12-09-42_42/checkpoint
+  # pretrained_model_gradient_step_cnt: [7565]
+  pretrained_model_gradient_step_cnt: [900]
 
 env:
   dataset_statistics_path: ./config/dataset/bridge_statistics.json

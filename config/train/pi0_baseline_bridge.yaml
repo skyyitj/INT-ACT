@@ -3,3 +3,6 @@
 name: "pi0_baseline_bridge"
 model_cfg: !include ../models/pi0_baseline_bridge.json
 freeze_lm_head: true
+global_batch_size: 1024  
+per_device_batch_size: 32  # 减少显存使用，梯度累积步数自动变为4
+# save_model_freq: 100 

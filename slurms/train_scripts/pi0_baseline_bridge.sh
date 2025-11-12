@@ -2,6 +2,7 @@
 
 source ./slurms/train_scripts/set_path.sh
 export PYTHONPATH=$PYTHONPATH:/home/lishuang/intact
+export PYTHONPATH=$PYTHONPATH:/home/lishuang/intact/packages/policy-server-client
 export CUDA_VISIBLE_DEVICES=0,1
 
 # 单机、无 IB 的常见稳定配置
@@ -48,5 +49,7 @@ torchrun \
 --max-restarts=0 \
 --standalone \
 src/agent/run.py \
---config_path config/train/pi0_baseline_bridge.yaml \
+--config_path config/train/pi0_baseline_bridge.yaml 
+# --config_path config/train/pi0_baseline_bridge_freezevlm.yaml 
+
 

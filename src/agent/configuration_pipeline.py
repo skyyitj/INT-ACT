@@ -90,6 +90,7 @@ class WandBConfig:
     project: str = "INT-ACT"
     entity: str = "ai4ce"
     run_id: str | None = None # if none, then will be auto generated
+    api_key: str | None = None # wandb API key, if None will try to use WANDB_API_KEY env var or existing login
 
 @dataclass
 class EnvConfig:
@@ -253,7 +254,7 @@ class TrainPipelineConfig:
 
         # save every epoch
         if self.save_model_freq is None:
-            self.save_model_freq = self.data.train_episode_count // self.global_batch_size * 1
+            self.save_model_freq = self.data.train_episode_count // self.global_batch_size * 1 // 2 # save every half epoch
 
 
         if self.eval_cfg is not None:
