@@ -50,7 +50,7 @@ export MASTER_PORT=$(find_free_port)
 
 # Hugging Face authentication for gated repositories
 # Option 1: Set HF_TOKEN environment variable (recommended for non-interactive scripts)
-export HF_TOKEN="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"
+export HF_TOKEN=""
 
 # Option 2: Use huggingface-cli login (uncomment if preferred)
 # huggingface-cli login --token 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
