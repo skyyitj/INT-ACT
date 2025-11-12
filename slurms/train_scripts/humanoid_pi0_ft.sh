@@ -52,8 +52,6 @@ export MASTER_PORT=$(find_free_port)
 # Option 1: Set HF_TOKEN environment variable (recommended for non-interactive scripts)
 export HF_TOKEN=""
 
-# Option 2: Use huggingface-cli login (uncomment if preferred)
-# huggingface-cli login --token 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
 
 # Set PaliGemma pretrained path (can be overridden by environment variable)
 # Defaults to TRANSFORMERS_CACHE/paligemma-3b-pt-224 if not set
