@@ -29,7 +29,7 @@ export PYTHONPATH=$PYTHONPATH:/media/jushen/linda-zhao/INT-ACT
 export PYTHONPATH=$PYTHONPATH:/media/jushen/linda-zhao/INT-ACT/third_party/lerobot
 export CUDA_VISIBLE_DEVICES=0
 
-export HF_TOKEN="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"
+# export HF_TOKEN=""
 export PALIGEMMA_PRETRAINED_PATH="${TRANSFORMERS_CACHE}/paligemma-3b-pt-224"
 # export PALIGEMMA_PRETRAINED_PATH="google/paligemma-3b-pt-224"
 echo "PALIGEMMA_PRETRAINED_PATH=${PALIGEMMA_PRETRAINED_PATH}"
